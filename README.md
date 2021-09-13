@@ -17,7 +17,7 @@ $salt = $key->saveToAsciiSafeString();
 $config = CacheConfig::fromArray(['duration' => 3600, 'crypto_salt' => $salt]);
 
 // without encryption
-$config = CacheConfig::fromArray(['duration' => 3600, 'encrypt' => false]);
+$config = CacheConfig::fromArray(['duration' => '+ 2 weeks', 'encrypt' => false]);
 
 $cache = new Camoo\Cache\Cache($config);
 

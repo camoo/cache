@@ -70,7 +70,7 @@ class Filesystem extends Base implements CacheInterface
             throw new InvalidArgumentException(self::INVALID_MESSAGE);
         }
 
-        if (preg_match('/^\+/', $ttl)) {
+        if (is_string($ttl) && preg_match('/^\+/', $ttl)) {
             try {
                 $oNow = new DateTime('now');
                 $sec = $oNow->modify($ttl)->getTimestamp() - time();
