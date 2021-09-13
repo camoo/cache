@@ -32,9 +32,10 @@ final class Cache
     /**
      * @param string $key
      * @param string|int|array|mixed $value
+     * @param int|null|string $ttl
      * @return bool
      */
-    public function write(string $key, $value): ?bool
+    public function write(string $key, $value, $ttl = null): ?bool
     {
 
         $class = $this->config->getClassName();
@@ -51,7 +52,8 @@ final class Cache
             }
         }
 
-        return (new $class)->set($key, $value, $this->config->getDuration());
+        $ttl = $ttl ?? $this->config->getDuration();
+        return (new $class)->set($key, $value, $ttl);
     }
 
     /**

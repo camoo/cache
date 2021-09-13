@@ -24,7 +24,13 @@ class CacheConfig
      */
     private $cryptoSalto;
 
-    public function __construct(string $className, $duration, bool $serialize = true, $encrypt = true, ?string $cryptoSalto = null)
+    public function __construct(
+        string  $className,
+                $duration = null,
+        bool    $serialize = true,
+                $encrypt = true,
+        ?string $cryptoSalto = null
+    )
     {
         $this->className = $className;
         $this->duration = $duration;
@@ -37,7 +43,7 @@ class CacheConfig
     {
         return new self(
             $config['CacheConfig'] ?? Filesystem::class,
-            $config['duration'],
+            $config['duration'] ?? null,
             $config['serialize'] ?? true,
             $config['encrypt'] ?? true,
             $config['crypto_salt'] ?? null
