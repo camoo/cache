@@ -1,0 +1,44 @@
+{
+	"name": "camoo/cache",
+	"description": "Cache FileSystem Library",
+	"homepage": "https://camoo.cm",
+	"type": "camoo-plugin",
+	"license": "GPL-3.0 License",
+	"minimum-stability": "dev",
+	"version": "1.0",
+	"prefer-stable" : true,
+	"authors": [
+		{
+			"name": "Camoo S.A.R.L",
+			"email": "dev@camoo.sarl",
+			"role": "Developer"
+		}
+	],
+	"keywords" : [
+		"CAMOO",
+		"Cache System"
+	],
+
+	"autoload": {
+		"psr-4": {
+			"Camoo\\Cache\\": "src"
+		}
+	},
+	"require": {
+		"php": ">=7.3",
+		"symfony/cache": "^5.3",
+		"psr/simple-cache": "^1.0",
+		"defuse/php-encryption": "^2.3"
+	},
+	"suggest": {
+		"phpunit/phpunit": "Allows automated tests to be run without system-wide install."
+	},
+	"scripts" : {
+		"test": "phpunit --colors=always"
+	},
+	"support": {
+		"issues": "https://github.com/camoo/cache/issues",
+		"source": "https://github.com/camoo/cache",
+		"wiki": "https://github.com/camoo/cache/wiki"
+	}
+}
