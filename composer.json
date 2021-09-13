@@ -3,7 +3,7 @@
 	"description": "Cache FileSystem Library",
 	"homepage": "https://camoo.cm",
 	"type": "camoo-plugin",
-	"license": "GPL-3.0 License",
+	"license": "GPL-2.0-or-later",
 	"minimum-stability": "dev",
 	"version": "1.0",
 	"prefer-stable" : true,
