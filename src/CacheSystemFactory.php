@@ -43,9 +43,25 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
             ));
         }
 
+        $ttl = $options['ttl'] ?? CacheSystemFactoryInterface::CACHE_TTL;
+
+        if (is_string($ttl) && preg_match('/^\+/', $ttl)) {
+            try {
+                $oNow = new \DateTime('now');
+                $sec = $oNow->modify($ttl)->getTimestamp() - time();
+                if ($sec < 0) {
+                    throw new InvalidArgumentException('ttl is not a legal value');
+                }
+                $ttl = new \DateInterval(sprintf('PT%dS', $sec));
+                $ttl = $ttl->s;
+            } catch (\Throwable $exception) {
+                throw new InvalidArgumentException('ttl is not a legal value');
+            }
+        }
+
         return new FilesystemAdapter(
             $options['namespace'],
-            $options['ttl'],
+            $ttl,
             rtrim($options['tmpPath'], DIRECTORY_SEPARATOR) .
             DIRECTORY_SEPARATOR .
             trim($options['dirname'], DIRECTORY_SEPARATOR)

@@ -14,8 +14,15 @@ class CacheConfig
         private ?string $cryptoSalto = null,
         private ?string $dirname = null,
         private ?string $tmpPath = null,
+        private ?string $prefix = null,
         private ?string $namespace = null
     ) {
+    }
+
+    /** @return string|null */
+    public function getPrefix(): ?string
+    {
+        return $this->prefix;
     }
 
     /** @return string|null */
@@ -64,6 +71,7 @@ class CacheConfig
             $config['crypto_salt'] ?? null,
             $config['dirname'] ?? '',
             $config['tmpPath'] ?? null,
+            $config['prefix'] ?? null,
             $config['namespace'] ?? null
         );
     }

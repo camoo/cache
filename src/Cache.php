@@ -51,13 +51,13 @@ class Cache
 
         $ttl = $ttl ?? $this->config->getDuration();
 
-        return $this->adapter->set($key, $value, $ttl);
+        return $this->adapter->set($this->formatKey($key), $value, $ttl);
     }
 
     /** @throws InvalidArgumentException */
     public function read(string $key): mixed
     {
-        $value = $this->adapter->get($key);
+        $value = $this->adapter->get($this->formatKey($key));
 
         if (!empty($value) && $this->config->withEncryption() === true) {
             try {
@@ -77,13 +77,13 @@ class Cache
     /** @throws InvalidArgumentException */
     public function delete(string $key): bool
     {
-        return $this->adapter->delete($key);
+        return $this->adapter->delete($this->formatKey($key));
     }
 
     /** @throws InvalidArgumentException */
     public function check(string $key): bool
     {
-        return $this->adapter->has($key);
+        return $this->adapter->has($this->formatKey($key));
     }
 
     /** @return bool */
@@ -113,5 +113,14 @@ class Cache
         $key = Key::loadFromAsciiSafeString($this->config->getCryptoSalt());
 
         return Crypto::decrypt($ciphertext, $key);
+    }
+
+    private function formatKey(string $key): string
+    {
+        if (empty($this->config->getPrefix())) {
+            return $key;
+        }
+
+        return $this->config->getPrefix() . $key;
     }
 }
