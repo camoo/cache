@@ -19,7 +19,7 @@ use Throwable;
  *
  * @author CamooSarl
  */
-final class Cache
+class Cache
 {
     private CacheInterface $adapter;
 
