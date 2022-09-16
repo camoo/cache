@@ -1,42 +1,57 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Camoo\Cache;
 
 class CacheConfig
 {
-
-    /**
-     * @var string
-     */
-    private $className;
-    private $duration;
-    /**
-     * @var bool
-     */
-    private $serialize;
-    /**
-     * @var bool|mixed
-     */
-    private $encrypt;
-    /**
-     * @var string|null
-     */
-    private $cryptoSalto;
-
     public function __construct(
-        string  $className,
-                $duration = null,
-        bool    $serialize = true,
-                $encrypt = true,
-        ?string $cryptoSalto = null
-    )
+        private string $className,
+        private mixed $duration = null,
+        private bool $serialize = true,
+        private bool $encrypt = true,
+        private ?string $cryptoSalto = null,
+        private ?string $dirname = null,
+        private ?string $tmpPath = null,
+        private ?string $namespace = null
+    ) {
+    }
+
+    /** @return string|null */
+    public function getNamespace(): ?string
     {
-        $this->className = $className;
-        $this->duration = $duration;
-        $this->serialize = $serialize;
-        $this->encrypt = $encrypt;
-        $this->cryptoSalto = $cryptoSalto;
+        return $this->namespace;
+    }
+
+    /** @return array */
+    public function getOptions(): array
+    {
+        $options = ['ttl' => $this->getDuration()];
+        if (null !== $this->getNamespace()) {
+            $options['namespace'] = $this->getNamespace();
+        }
+
+        if (null !== $this->getDirname()) {
+            $options['dirname'] = $this->getDirname();
+        }
+
+        if (null !== $this->getTmpPath()) {
+            $options['tmpPath'] = $this->getTmpPath();
+        }
+
+        return $options;
+    }
+
+    /** @return string|null */
+    public function getTmpPath(): ?string
+    {
+        return $this->tmpPath;
+    }
+
+    public function getDirname(): ?string
+    {
+        return $this->dirname;
     }
 
     public static function fromArray(array $config): CacheConfig
@@ -46,7 +61,10 @@ class CacheConfig
             $config['duration'] ?? null,
             $config['serialize'] ?? true,
             $config['encrypt'] ?? true,
-            $config['crypto_salt'] ?? null
+            $config['crypto_salt'] ?? null,
+            $config['dirname'] ?? '',
+            $config['tmpPath'] ?? null,
+            $config['namespace'] ?? null
         );
     }
 
@@ -55,10 +73,8 @@ class CacheConfig
         return $this->className;
     }
 
-    /**
-     * @return mixed
-     */
-    public function getDuration()
+    /** @return mixed */
+    public function getDuration(): mixed
     {
         return $this->duration;
     }

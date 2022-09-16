@@ -5,7 +5,7 @@
 	"type": "camoo-plugin",
 	"license": "GPL-2.0-or-later",
 	"minimum-stability": "dev",
-	"version": "1.0",
+	"version": "2.0",
 	"prefer-stable" : true,
 	"authors": [
 		{
@@ -25,7 +25,7 @@
 		}
 	},
 	"require": {
-		"php": ">=7.3",
+		"php": ">=8.0",
 		"symfony/cache": "^5.3",
 		"psr/simple-cache": "^1.0",
 		"defuse/php-encryption": "^2.3"
