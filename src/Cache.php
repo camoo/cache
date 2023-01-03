@@ -205,6 +205,10 @@ class Cache
         }
         $arguments[] = $parsedData->config;
 
+        if ($method === 'writes') {
+            return $cache->write($parsedData->key, $parsedData->value);
+        }
+
         return call_user_func_array([$cache, rtrim($method, 's')], $arguments);
     }
 }
