@@ -144,8 +144,13 @@ class Cache
             throw new AppException(sprintf('Cache Configuration %s is missing', $config));
         }
         $configData = \CAMOO\Utils\Configure::read('Cache.' . $config);
+
+        if (array_key_exists('className', $configData)) {
+            unset($configData['className']);
+        }
+
         $configData += $default;
-        $class = $configData['className'];
+        $class = $configData['CacheConfig'];
         if (!class_exists($class)) {
             throw new AppException(sprintf('ClassName %s Not found !', $class));
         }
@@ -199,7 +204,7 @@ class Cache
         if ($method === 'writes') {
             $arguments[] = $parsedData->value;
         }
-        $parsedData[] = $parsedData->config;
+        $arguments[] = $parsedData->config;
 
         return call_user_func_array([$cache, rtrim($method, 's')], $arguments);
     }
