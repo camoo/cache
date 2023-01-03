@@ -18,6 +18,12 @@ use Throwable;
 /**
  * Class Cache
  *
+ * @method static bool      deletes(string $key, string $config)
+ * @method static mixed     reads(string $key, string $config)
+ * @method static bool|null writes(string $key, mixed $value, string $config)
+ * @method static bool      checks(string $key, string $config)
+ * @method static bool      clears(string $config)
+ *
  * @author CamooSarl
  */
 class Cache
@@ -36,7 +42,7 @@ class Cache
             throw new AppException(sprintf('Method "%s" not found!', get_called_class() . '::' . $method));
         }
 
-        if (!in_array($method, ['read', 'write', 'delete', 'clear', 'check'], true)) {
+        if (!in_array($method, ['reads', 'writes', 'deletes', 'clears', 'checks'], true)) {
             throw new AppException(sprintf('Method "%s" not accessible!', get_called_class() . '::' . $method));
         }
 
@@ -128,15 +134,6 @@ class Cache
         return Crypto::decrypt($ciphertext, $key);
     }
 
-    private function formatKey(string $key): string
-    {
-        if (empty($this->config->getPrefix())) {
-            return $key;
-        }
-
-        return $this->config->getPrefix() . $key;
-    }
-
     private static function getConfig(string $config): array
     {
         if (!class_exists(\CAMOO\Utils\Configure::class)) {
@@ -160,19 +157,33 @@ class Cache
         return $configData;
     }
 
+    private function formatKey(string $key): string
+    {
+        if (empty($this->config->getPrefix())) {
+            return $key;
+        }
+
+        return $this->config->getPrefix() . $key;
+    }
+
     private static function parseArguments(stdClass $data, array $arguments, string $method): stdClass
     {
-        if ($method === 'write') {
+        if ($method === 'writes') {
             [$key, $value, $config] = $arguments;
             $data->value = $value;
+        } elseif ($method === 'clears') {
+            [$config] = $arguments;
         } else {
             [$key, $config] = $arguments;
         }
 
-        if (empty($key) || empty($config)) {
-            throw new AppException('\$key or \$config cannot be empty!');
+        if (empty($config)) {
+            throw new AppException('\$config cannot be empty!');
         }
-        $data->key = (string)$key;
+        if (isset($key)) {
+            $data->key = (string)$key;
+        }
+
         $data->config = (string)$config;
 
         return $data;
@@ -184,12 +195,12 @@ class Cache
         $parsedData = self::parseArguments($data, $rawArguments, $method);
         $cacheConfig = CacheConfig::fromArray(self::getConfig($parsedData->config));
         $cache = new self($cacheConfig);
-        $arguments = [$parsedData->key];
-        if ($method === 'write') {
+        $arguments = $method !== 'clears' ? [$parsedData->key] : [];
+        if ($method === 'writes') {
             $arguments[] = $parsedData->value;
         }
         $parsedData[] = $parsedData->config;
 
-        return call_user_func_array([$cache, $method], $arguments);
+        return call_user_func_array([$cache, rtrim($method, 's')], $arguments);
     }
 }
