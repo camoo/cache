@@ -139,7 +139,7 @@ class Cache
         if (!class_exists(\CAMOO\Utils\Configure::class)) {
             throw new AppException('Class "Configure" not found! Consider to use Camoo Framework.');
         }
-        $default = ['encrypt' => false];
+        $default = ['CacheConfig' => Filesystem::class, 'encrypt' => false];
         if (!\CAMOO\Utils\Configure::check('Cache.' . $config)) {
             throw new AppException(sprintf('Cache Configuration %s is missing', $config));
         }
@@ -150,11 +150,10 @@ class Cache
         }
 
         $configData += $default;
-        $class = $configData['CacheConfig'];
-        if (!class_exists($class)) {
-            throw new AppException(sprintf('ClassName %s Not found !', $class));
-        }
 
+        if (!class_exists($configData['CacheConfig'])) {
+            throw new AppException(sprintf('ClassName %s Not found !', $configData['CacheConfig']));
+        }
         if (empty($configData['tmpPath']) && !empty($configData['path'])) {
             $configData['tmpPath'] = $configData['path'];
         }
