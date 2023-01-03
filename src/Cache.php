@@ -12,6 +12,7 @@ use Defuse\Crypto\Exception\EnvironmentIsBrokenException;
 use Defuse\Crypto\Exception\WrongKeyOrModifiedCiphertextException;
 use Defuse\Crypto\Key;
 use Psr\SimpleCache\InvalidArgumentException;
+use stdClass;
 use Throwable;
 
 /**
@@ -27,6 +28,19 @@ class Cache
     {
         $class = $this->config->getClassName();
         $this->adapter = (new $class($this->config->getOptions()));
+    }
+
+    public static function __callStatic(string $method, array $arguments): mixed
+    {
+        if (method_exists(self::class, $method)) {
+            throw new AppException(sprintf('Method "%s" not found!', get_called_class() . '::' . $method));
+        }
+
+        if (!in_array($method, ['read', 'write', 'delete', 'clear', 'check'], true)) {
+            throw new AppException(sprintf('Method "%s" not accessible!', get_called_class() . '::' . $method));
+        }
+
+        return self::applyMagicCall($arguments, $method);
     }
 
     /**
@@ -86,7 +100,6 @@ class Cache
         return $this->adapter->has($this->formatKey($key));
     }
 
-    /** @return bool */
     public function clear(): bool
     {
         return $this->adapter->clear();
@@ -122,5 +135,61 @@ class Cache
         }
 
         return $this->config->getPrefix() . $key;
+    }
+
+    private static function getConfig(string $config): array
+    {
+        if (!class_exists(\CAMOO\Utils\Configure::class)) {
+            throw new AppException('Class "Configure" not found! Consider to use Camoo Framework.');
+        }
+        $default = ['CacheConfig' => Filesystem::class, 'encrypt' => false];
+        if (!\CAMOO\Utils\Configure::check('Cache.' . $config)) {
+            throw new AppException(sprintf('Cache Configuration %s is missing', $config));
+        }
+        $configData = \CAMOO\Utils\Configure::read('Cache.' . $config);
+        $configData += $default;
+        $class = $configData['className'];
+        if (!class_exists($class)) {
+            throw new AppException(sprintf('ClassName %s Not found !', $class));
+        }
+
+        if (empty($configData['tmpPath']) && !empty($configData['path'])) {
+            $configData['tmpPath'] = $configData['path'];
+        }
+
+        return $configData;
+    }
+
+    private static function parseArguments(stdClass $data, array $arguments, string $method): stdClass
+    {
+        if ($method === 'write') {
+            [$key, $value, $config] = $arguments;
+            $data->value = $value;
+        } else {
+            [$key, $config] = $arguments;
+        }
+
+        if (empty($key) || empty($config)) {
+            throw new AppException('\$key or \$config cannot be empty!');
+        }
+        $data->key = (string)$key;
+        $data->config = (string)$config;
+
+        return $data;
+    }
+
+    private static function applyMagicCall(array $rawArguments, string $method): mixed
+    {
+        $data = new stdClass();
+        $parsedData = self::parseArguments($data, $rawArguments, $method);
+        $cacheConfig = CacheConfig::fromArray(self::getConfig($parsedData->config));
+        $cache = new self($cacheConfig);
+        $arguments = [$parsedData->key];
+        if ($method === 'write') {
+            $arguments[] = $parsedData->value;
+        }
+        $parsedData[] = $parsedData->config;
+
+        return call_user_func_array([$cache, $method], $arguments);
     }
 }

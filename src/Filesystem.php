@@ -18,7 +18,6 @@ class Filesystem extends Base implements CacheInterface
 
     private ?FilesystemAdapter $oCache = null;
 
-    /** @param array $options */
     public function __construct(array $options = [])
     {
         if ($this->oCache === null) {

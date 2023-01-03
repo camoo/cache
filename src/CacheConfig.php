@@ -19,19 +19,16 @@ class CacheConfig
     ) {
     }
 
-    /** @return string|null */
     public function getPrefix(): ?string
     {
         return $this->prefix;
     }
 
-    /** @return string|null */
     public function getNamespace(): ?string
     {
         return $this->namespace;
     }
 
-    /** @return array */
     public function getOptions(): array
     {
         $options = ['ttl' => $this->getDuration()];
@@ -50,7 +47,6 @@ class CacheConfig
         return $options;
     }
 
-    /** @return string|null */
     public function getTmpPath(): ?string
     {
         return $this->tmpPath;
@@ -81,7 +77,6 @@ class CacheConfig
         return $this->className;
     }
 
-    /** @return mixed */
     public function getDuration(): mixed
     {
         return $this->duration;

@@ -13,7 +13,6 @@ use Camoo\Cache\Interfaces\CacheSystemFactoryInterface;
  */
 class Base
 {
-    /** @return CacheSystemFactoryInterface */
     protected function loadFactory(): CacheSystemFactoryInterface
     {
         return CacheSystemFactory::create();
