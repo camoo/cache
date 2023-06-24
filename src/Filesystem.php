@@ -63,7 +63,7 @@ class Filesystem extends Base implements CacheInterface
      * @throws \Psr\Cache\InvalidArgumentException
      *                                                             MUST be thrown if the $key string is not a legal value.
      *
-     * @return bool True on success and false on failure.
+     * @return ?bool True on success and false on failure.
      */
     public function set($key, $value, $ttl = null): ?bool
     {
@@ -79,7 +79,7 @@ class Filesystem extends Base implements CacheInterface
                     throw new InvalidArgumentException('ttl is not a legal value');
                 }
                 $ttl = new DateInterval(sprintf('PT%dS', $sec));
-            } catch (Throwable $exception) {
+            } catch (Throwable) {
                 throw new InvalidArgumentException('ttl is not a legal value');
             }
         }

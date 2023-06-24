@@ -6,7 +6,9 @@ namespace Camoo\Cache;
 
 use Camoo\Cache\Exception\AppCacheException as Exception;
 use Camoo\Cache\Interfaces\CacheSystemFactoryInterface;
+use DateInterval;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Throwable;
 
 /**
  * Class FileSystemFactory
@@ -15,16 +17,16 @@ use Symfony\Component\Cache\Adapter\FilesystemAdapter;
  */
 final class CacheSystemFactory implements CacheSystemFactoryInterface
 {
-    private static ?CacheSystemFactoryInterface $_created = null;
+    private static ?CacheSystemFactoryInterface $factory = null;
 
     /** creates instances of Factory */
     public static function create(): CacheSystemFactoryInterface
     {
-        if (null === self::$_created) {
-            self::$_created = new self();
+        if (null === self::$factory) {
+            self::$factory = new self();
         }
 
-        return self::$_created;
+        return self::$factory;
     }
 
     public function getFileSystemAdapter(array $options = []): FilesystemAdapter
@@ -37,10 +39,7 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
         ];
         $options = array_merge($default, $options);
         if (!$this->classExists(FilesystemAdapter::class)) {
-            throw new Exception(sprintf(
-                'Adapter Class %s cannot be found',
-                'Symfony\Component\Cache\Adapter\FilesystemAdapter'
-            ));
+            throw new Exception(sprintf('Adapter Class %s cannot be found', FilesystemAdapter::class));
         }
 
         $ttl = $options['ttl'] ?? CacheSystemFactoryInterface::CACHE_TTL;
@@ -52,9 +51,9 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
                 if ($sec < 0) {
                     throw new InvalidArgumentException('ttl is not a legal value');
                 }
-                $ttl = new \DateInterval(sprintf('PT%dS', $sec));
+                $ttl = new DateInterval(sprintf('PT%dS', $sec));
                 $ttl = $ttl->s;
-            } catch (\Throwable $exception) {
+            } catch (Throwable) {
                 throw new InvalidArgumentException('ttl is not a legal value');
             }
         }
