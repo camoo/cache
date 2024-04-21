@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Camoo\Cache;
 
+use Camoo\Cache\Exception\AppCacheException;
 use Camoo\Cache\Exception\AppCacheException as AppException;
 use Camoo\Cache\Interfaces\CacheInterface;
 use Defuse\Crypto\Crypto;
@@ -27,9 +28,14 @@ class Cache
 {
     private CacheInterface $adapter;
 
-    public function __construct(private CacheConfig $config)
+    private ?CacheConfig $config;
+
+    public function __construct(?CacheConfig $config = null)
     {
-        $this->initializeAdapter();
+        $this->config = $config;
+        if ($this->config !== null) {
+            $this->initializeAdapter();
+        }
     }
 
     public static function __callStatic(string $method, array $arguments): mixed
@@ -45,6 +51,12 @@ class Cache
         return self::applyMagicCall($arguments, $method);
     }
 
+    public function setConfig(CacheConfig $config): void
+    {
+        $this->config = $config;
+        $this->initializeAdapter();
+    }
+
     /**
      * @param string|int|array|mixed $value
      * @param int|string|null        $ttl
@@ -53,6 +65,8 @@ class Cache
      */
     public function write(string $key, mixed $value, mixed $ttl = null): ?bool
     {
+        $this->ensureConfigured();
+
         $value = $this->prepareValueForStorage($value);
 
         $ttl = $ttl ?? $this->config->getDuration();
@@ -63,6 +77,8 @@ class Cache
     /** @throws InvalidArgumentException */
     public function read(string $key): mixed
     {
+        $this->ensureConfigured();
+
         $value = $this->adapter->get($this->formatKey($key));
 
         return $this->prepareValueFromStorage($value);
@@ -71,12 +87,16 @@ class Cache
     /** @throws InvalidArgumentException */
     public function delete(string $key): bool
     {
+        $this->ensureConfigured();
+
         return $this->adapter->delete($this->formatKey($key));
     }
 
     /** @throws InvalidArgumentException */
     public function check(string $key): bool
     {
+        $this->ensureConfigured();
+
         return $this->adapter->has($this->formatKey($key));
     }
 
@@ -85,9 +105,23 @@ class Cache
         return $this->adapter->clear();
     }
 
+    private function ensureConfigured(): void
+    {
+        if ($this->config === null) {
+            throw new AppCacheException('Cache is not configured properly.');
+        }
+    }
+
     private function initializeAdapter(): void
     {
+        if ($this->config === null) {
+            throw new AppException('Configuration must be set before initializing the adapter.');
+        }
+
         $class = $this->config->getClassName();
+        if (!class_exists($class)) {
+            throw new AppException('Cache adapter class ' . $class . ' not found.');
+        }
         $this->adapter = new $class($this->config->getOptions());
     }
 
