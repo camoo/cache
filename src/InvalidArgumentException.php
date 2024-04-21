@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Camoo\Cache;
 
 use Camoo\Cache\Exception\AppCacheException as Exception;
