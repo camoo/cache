@@ -23,6 +23,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Install Redis Tools
+        run: sudo apt-get update && sudo apt-get install redis-tools -y
+
+      - name: Check Redis server is running
+        run: redis-cli -h localhost -p 6379 ping
+
       - name: Validate composer.json and composer.lock
         run: composer validate --strict
 
@@ -37,9 +43,6 @@ jobs:
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
-
-      - name: Check Redis server is running
-        run: redis-cli -h localhost -p 6379 ping
 
       - name: Run test suite
         env:
