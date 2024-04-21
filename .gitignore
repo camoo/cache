@@ -3,3 +3,6 @@
 /tmp/cache/persistent/*
 !/tmp/cache/persistent/empty
 .idea
+.php-cs-fixer.cache
+tmp
+sample

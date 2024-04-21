@@ -7,7 +7,6 @@ namespace Camoo\Cache;
 use Camoo\Cache\Interfaces\CacheInterface;
 use Camoo\Cache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
 use DateInterval;
-use DateTime;
 use Exception;
 use Psr\Cache\CacheItemInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
@@ -16,8 +15,6 @@ use Throwable;
 
 class Filesystem extends Base implements CacheInterface
 {
-    private const INVALID_MESSAGE = 'The key provided is not valid.';
-
     private ?FilesystemAdapter $cache = null;
 
     public function __construct(array $options = [])
@@ -189,31 +186,5 @@ class Filesystem extends Base implements CacheInterface
         $this->validateKey($key);
 
         return $this->cache->hasItem($key);
-    }
-
-    private function validateKey($key): void
-    {
-        if (!is_string($key) || trim($key) === '') {
-            throw new SimpleCacheInvalidArgumentException(self::INVALID_MESSAGE);
-        }
-    }
-
-    private function parseTtl(mixed $ttl): ?DateInterval
-    {
-        if (is_string($ttl) && preg_match('/^\+/', $ttl)) {
-            try {
-                $now = new DateTime('now');
-                $sec = $now->modify($ttl)->getTimestamp() - time();
-                if ($sec < 0) {
-                    throw new SimpleCacheInvalidArgumentException('TTL is not a legal value');
-                }
-
-                return new DateInterval(sprintf('PT%dS', $sec));
-            } catch (Throwable $e) {
-                throw new SimpleCacheInvalidArgumentException('TTL is not a legal value: ' . $e->getMessage());
-            }
-        }
-
-        return null;
     }
 }

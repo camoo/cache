@@ -11,11 +11,16 @@ class CacheConfig
         private mixed $duration = null,
         private bool $serialize = true,
         private bool $encrypt = true,
-        private ?string $cryptoSalto = null,
+        private ?string $cryptoSalt = null,
         private ?string $dirname = null,
         private ?string $tmpPath = null,
         private ?string $prefix = null,
-        private ?string $namespace = null
+        private ?string $namespace = null,
+        private ?string $server = '127.0.0.1',
+        private ?int $port = 6379,
+        private ?int $timeout = 0,
+        private ?int $database = 0,
+        private ?string $password = null
     ) {
     }
 
@@ -44,6 +49,17 @@ class CacheConfig
             $options['tmpPath'] = $this->getTmpPath();
         }
 
+        // Redis specific options
+        if (str_contains($this->className, 'Redis')) {
+            $options += [
+                'server' => $this->server,
+                'port' => $this->port,
+                'timeout' => $this->timeout,
+                'database' => $this->database,
+                'password' => $this->password,
+            ];
+        }
+
         return $options;
     }
 
@@ -60,15 +76,20 @@ class CacheConfig
     public static function fromArray(array $config): CacheConfig
     {
         return new self(
-            $config['CacheConfig'] ?? Filesystem::class,
+            $config['className'] ?? Filesystem::class,
             $config['duration'] ?? null,
             $config['serialize'] ?? true,
             $config['encrypt'] ?? true,
             $config['crypto_salt'] ?? null,
-            $config['dirname'] ?? '',
+            $config['dirname'] ?? null,
             $config['tmpPath'] ?? null,
             $config['prefix'] ?? null,
-            $config['namespace'] ?? null
+            $config['namespace'] ?? null,
+            $config['server'] ?? '127.0.0.1',
+            $config['port'] ?? 6379,
+            $config['timeout'] ?? 0,
+            $config['database'] ?? 0,
+            $config['password'] ?? null
         );
     }
 
@@ -89,11 +110,38 @@ class CacheConfig
 
     public function withEncryption(): bool
     {
-        return $this->encrypt;
+        return $this->encrypt && !empty($this->cryptoSalt);
     }
 
     public function getCryptoSalt(): ?string
     {
-        return $this->cryptoSalto;
+        return $this->cryptoSalt;
+    }
+
+    // Additional getters for Redis settings
+
+    public function getServer(): ?string
+    {
+        return $this->server;
+    }
+
+    public function getPort(): ?int
+    {
+        return $this->port;
+    }
+
+    public function getTimeout(): ?int
+    {
+        return $this->timeout;
+    }
+
+    public function getDatabase(): ?int
+    {
+        return $this->database;
+    }
+
+    public function getPassword(): ?string
+    {
+        return $this->password;
     }
 }
