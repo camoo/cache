@@ -6,3 +6,6 @@
 .php-cs-fixer.cache
 tmp
 sample
+phpunit.xml
+.phpunit.result.cache
+.phpunit.cache
