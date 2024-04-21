@@ -71,7 +71,7 @@ class RedisEngineTest extends TestCase
         }
 
         $results = $this->cacheEngine->getMultiple($keys);
-        $this->assertEquals(array_combine($keys, $values), iterator_to_array($results));
+        $this->assertEquals(array_combine($keys, $values), ($results));
     }
 
     public function testSetMultiple()
