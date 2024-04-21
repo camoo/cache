@@ -51,10 +51,15 @@ class Cache
         return self::applyMagicCall($arguments, $method);
     }
 
-    public function setConfig(CacheConfig $config): void
+    public function withConfig(CacheConfig $config): self
     {
-        $this->config = $config;
+        // Clone the current instance to keep it immutable
+        $newInstance = clone $this;
+
+        $newInstance->config = $config;
         $this->initializeAdapter();
+
+        return $newInstance;
     }
 
     /**
