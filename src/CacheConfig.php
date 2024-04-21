@@ -95,6 +95,10 @@ class CacheConfig
 
     public function getClassName(): string
     {
+        if ($this->className === 'File') {
+            return Filesystem::class;
+        }
+
         return $this->className;
     }
 
