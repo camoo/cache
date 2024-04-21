@@ -7,9 +7,6 @@ namespace Camoo\Cache;
 use Camoo\Cache\Exception\AppCacheException as AppException;
 use Camoo\Cache\Interfaces\CacheInterface;
 use Defuse\Crypto\Crypto;
-use Defuse\Crypto\Exception\BadFormatException;
-use Defuse\Crypto\Exception\EnvironmentIsBrokenException;
-use Defuse\Crypto\Exception\WrongKeyOrModifiedCiphertextException;
 use Defuse\Crypto\Key;
 use Psr\SimpleCache\InvalidArgumentException;
 use stdClass;
@@ -32,8 +29,7 @@ class Cache
 
     public function __construct(private CacheConfig $config)
     {
-        $class = $this->config->getClassName();
-        $this->adapter = (new $class($this->config->getOptions()));
+        $this->initializeAdapter();
     }
 
     public static function __callStatic(string $method, array $arguments): mixed
@@ -57,17 +53,7 @@ class Cache
      */
     public function write(string $key, mixed $value, mixed $ttl = null): ?bool
     {
-        if ($this->config->withSerialization() === true) {
-            $value = serialize($value);
-        }
-
-        if ($this->config->withEncryption() === true) {
-            try {
-                $value = $this->encrypt($value);
-            } catch (Throwable $exception) {
-                throw new AppException($exception->getMessage(), $exception->getCode(), $exception->getPrevious());
-            }
-        }
+        $value = $this->prepareValueForStorage($value);
 
         $ttl = $ttl ?? $this->config->getDuration();
 
@@ -79,19 +65,7 @@ class Cache
     {
         $value = $this->adapter->get($this->formatKey($key));
 
-        if (!empty($value) && $this->config->withEncryption() === true) {
-            try {
-                $value = $this->decrypt($value);
-            } catch (Throwable $exception) {
-                throw new AppException($exception->getMessage(), $exception->getCode(), $exception->getPrevious());
-            }
-        }
-
-        if (!empty($value) && $this->config->withSerialization() === true) {
-            $value = unserialize($value);
-        }
-
-        return null !== $value ? $value : false;
+        return $this->prepareValueFromStorage($value);
     }
 
     /** @throws InvalidArgumentException */
@@ -111,27 +85,71 @@ class Cache
         return $this->adapter->clear();
     }
 
-    /**
-     * @throws EnvironmentIsBrokenException
-     * @throws BadFormatException
-     */
-    protected function encrypt(string $plaintext): string
+    private function initializeAdapter(): void
     {
-        $key = Key::loadFromAsciiSafeString($this->config->getCryptoSalt());
-
-        return Crypto::encrypt($plaintext, $key);
+        $class = $this->config->getClassName();
+        $this->adapter = new $class($this->config->getOptions());
     }
 
-    /**
-     * @throws EnvironmentIsBrokenException
-     * @throws BadFormatException
-     * @throws WrongKeyOrModifiedCiphertextException
-     */
-    protected function decrypt(string $ciphertext): string
+    private function prepareValueForStorage(mixed $value): string
     {
-        $key = Key::loadFromAsciiSafeString($this->config->getCryptoSalt());
+        if ($this->config->withSerialization()) {
+            $value = serialize($value);
+        }
 
-        return Crypto::decrypt($ciphertext, $key);
+        if ($this->config->withEncryption()) {
+            try {
+                $value = $this->encrypt($value);
+            } catch (Throwable $exception) {
+                throw new AppException($exception->getMessage(), $exception->getCode(), $exception->getPrevious());
+            }
+        }
+
+        return $value;
+    }
+
+    private function prepareValueFromStorage(?string $value): mixed
+    {
+        if ($value === null) {
+            return false;
+        }
+
+        if (!empty($value) && $this->config->withEncryption()) {
+            try {
+                $value = $this->decrypt($value);
+            } catch (Throwable $exception) {
+                throw new AppException($exception->getMessage(), $exception->getCode(), $exception->getPrevious());
+            }
+        }
+
+        if (!empty($value) && $this->config->withSerialization()) {
+            return unserialize($value);
+        }
+
+        return $value;
+    }
+
+    private function encrypt(string $plaintext): string
+    {
+        try {
+
+            $key = Key::loadFromAsciiSafeString($this->config->getCryptoSalt());
+
+            return Crypto::encrypt($plaintext, $key);
+        } catch (Throwable $exception) {
+            throw new AppException('Encryption failed: ' . $exception->getMessage(), 0, $exception);
+        }
+    }
+
+    private function decrypt(string $ciphertext): string
+    {
+        try {
+            $key = Key::loadFromAsciiSafeString($this->config->getCryptoSalt());
+
+            return Crypto::decrypt($ciphertext, $key);
+        } catch (Throwable $exception) {
+            throw new AppException('Decryption failed: ' . $exception->getMessage(), 0, $exception);
+        }
     }
 
     private static function getConfig(string $config): array

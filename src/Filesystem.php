@@ -5,24 +5,21 @@ declare(strict_types=1);
 namespace Camoo\Cache;
 
 use Camoo\Cache\Interfaces\CacheInterface;
+use Camoo\Cache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
 use DateInterval;
-use DateTime;
 use Exception;
+use Psr\Cache\CacheItemInterface;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Psr16Cache;
 use Throwable;
 
 class Filesystem extends Base implements CacheInterface
 {
-    private const INVALID_MESSAGE = 'key is not a legal value';
-
-    private ?FilesystemAdapter $oCache = null;
+    private ?FilesystemAdapter $cache = null;
 
     public function __construct(array $options = [])
     {
-        if ($this->oCache === null) {
-            $this->oCache = $this->loadFactory()->getFileSystemAdapter($options);
-        }
+        $this->cache ??= $this->loadFactory()->getFileSystemAdapter($options);
     }
 
     /**
@@ -32,22 +29,19 @@ class Filesystem extends Base implements CacheInterface
      * @param mixed  $default Default value to return if the key does not exist.
      *
      * @throws \Psr\SimpleCache\InvalidArgumentException
-     * @throws InvalidArgumentException|\Psr\Cache\InvalidArgumentException
-     *                                                                      MUST be thrown if the $key string is not a legal value.
+     * @throws SimpleCacheInvalidArgumentException|\Psr\Cache\InvalidArgumentException
+     *                                                                                 MUST be thrown if the $key string is not a legal value.
      *
      * @return mixed The value of the item from the cache, or $default in case of cache miss.
      */
     public function get($key, $default = null)
     {
-        if (!is_string($key) || trim($key) === '') {
-            throw new InvalidArgumentException(self::INVALID_MESSAGE);
-        }
-        if (!$this->has($key)) {
-            return $default;
-        }
-        $cache = $this->oCache->getItem($key);
+        $this->validateKey($key);
 
-        return $cache->get($key, $default);
+        /** @var CacheItemInterface $item */
+        $item = $this->cache->getItem($key);
+
+        return $item->isHit() ? $item->get() : $default;
     }
 
     /**
@@ -67,34 +61,20 @@ class Filesystem extends Base implements CacheInterface
      */
     public function set($key, $value, $ttl = null): ?bool
     {
-        if (!is_string($key) || trim($key) === '') {
-            throw new InvalidArgumentException(self::INVALID_MESSAGE);
-        }
-
-        if (is_string($ttl) && preg_match('/^\+/', $ttl)) {
-            try {
-                $oNow = new DateTime('now');
-                $sec = $oNow->modify($ttl)->getTimestamp() - time();
-                if ($sec < 0) {
-                    throw new InvalidArgumentException('ttl is not a legal value');
-                }
-                $ttl = new DateInterval(sprintf('PT%dS', $sec));
-            } catch (Throwable) {
-                throw new InvalidArgumentException('ttl is not a legal value');
-            }
-        }
-
-        $cache = $this->oCache->getItem($key);
-        if ($cache->isHit()) {
+        $this->validateKey($key);
+        /** @var CacheItemInterface $item */
+        $item = $this->cache->getItem($key);
+        if ($item->isHit()) {
             return null;
         }
 
-        $cache->set($value);
-        if (!empty($ttl)) {
-            $cache->expiresAfter($ttl);
+        $item->set($value);
+
+        if (null !== $ttl) {
+            $item->expiresAfter($this->parseTTL($ttl));
         }
 
-        return $this->oCache->save($cache);
+        return $this->cache->save($item);
     }
 
     /**
@@ -102,18 +82,16 @@ class Filesystem extends Base implements CacheInterface
      *
      * @param string $key The unique cache key of the item to delete.
      *
-     * @throws InvalidArgumentException|\Psr\Cache\InvalidArgumentException
-     *                                                                      MUST be thrown if the $key string is not a legal value.
+     * @throws SimpleCacheInvalidArgumentException|\Psr\Cache\InvalidArgumentException
+     *                                                                                 MUST be thrown if the $key string is not a legal value.
      *
      * @return bool True if the item was successfully removed. False if there was an error.
      */
     public function delete($key): bool
     {
-        if (!is_string($key) || trim($key) === '') {
-            throw new InvalidArgumentException(self::INVALID_MESSAGE);
-        }
+        $this->validateKey($key);
 
-        return $this->oCache->deleteItem($key);
+        return $this->cache->deleteItem($key);
     }
 
     /**
@@ -123,7 +101,7 @@ class Filesystem extends Base implements CacheInterface
      */
     public function clear(): bool
     {
-        return $this->oCache->clear();
+        return $this->cache->clear();
     }
 
     /**
@@ -141,9 +119,9 @@ class Filesystem extends Base implements CacheInterface
     public function getMultiple($keys, $default = null): iterable
     {
         try {
-            return (new Psr16Cache($this->oCache))->getMultiple($keys, $default);
-        } catch (Throwable $err) {
-            throw new InvalidArgumentException($err->getMessage());
+            return (new Psr16Cache($this->cache))->getMultiple($keys, $default);
+        } catch (Throwable $exception) {
+            throw new SimpleCacheInvalidArgumentException($exception->getMessage());
         }
     }
 
@@ -164,9 +142,9 @@ class Filesystem extends Base implements CacheInterface
     public function setMultiple($values, $ttl = null): bool
     {
         try {
-            return (new Psr16Cache($this->oCache))->setMultiple($values, $ttl);
-        } catch (Throwable $err) {
-            throw new InvalidArgumentException($err->getMessage());
+            return (new Psr16Cache($this->cache))->setMultiple($values, $ttl);
+        } catch (Throwable $exception) {
+            throw new SimpleCacheInvalidArgumentException($exception->getMessage());
         }
     }
 
@@ -184,9 +162,9 @@ class Filesystem extends Base implements CacheInterface
     public function deleteMultiple($keys): bool
     {
         try {
-            return (new Psr16Cache($this->oCache))->deleteMultiple($keys);
+            return (new Psr16Cache($this->cache))->deleteMultiple($keys);
         } catch (Throwable $err) {
-            throw new InvalidArgumentException($err->getMessage());
+            throw new SimpleCacheInvalidArgumentException($err->getMessage());
         }
     }
 
@@ -200,11 +178,13 @@ class Filesystem extends Base implements CacheInterface
      *
      * @param string $key The cache item key.
      *
-     * @throws InvalidArgumentException|\Psr\Cache\InvalidArgumentException
-     *                                                                      MUST be thrown if the $key string is not a legal value.
+     * @throws SimpleCacheInvalidArgumentException|\Psr\Cache\InvalidArgumentException
+     *                                                                                 MUST be thrown if the $key string is not a legal value.
      */
     public function has($key): bool
     {
-        return $this->oCache->hasItem($key);
+        $this->validateKey($key);
+
+        return $this->cache->hasItem($key);
     }
 }
