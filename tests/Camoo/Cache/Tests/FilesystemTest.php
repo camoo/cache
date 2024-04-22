@@ -25,7 +25,7 @@ class FilesystemTest extends TestCase
         $this->filesystem->clear();
     }
 
-    public function testSetAndGet()
+    public function testSetAndGet(): void
     {
         $key = 'unique_key';
         $value = 'Test Value';
@@ -34,7 +34,7 @@ class FilesystemTest extends TestCase
         $this->assertNull($this->filesystem->get('non_existing_key'));
     }
 
-    public function testDelete()
+    public function testDelete(): void
     {
         $key = 'to_delete';
         $this->filesystem->set($key, 'value');
@@ -42,7 +42,7 @@ class FilesystemTest extends TestCase
         $this->assertNull($this->filesystem->get($key));
     }
 
-    public function testClear()
+    public function testClear(): void
     {
         $this->filesystem->set('key1', 'value1');
         $this->filesystem->set('key2', 'value2');
@@ -51,7 +51,7 @@ class FilesystemTest extends TestCase
         $this->assertNull($this->filesystem->get('key2'));
     }
 
-    public function testGetMultiple()
+    public function testGetMultiple(): void
     {
         $this->filesystem->set('key1', 'value1');
         $this->filesystem->set('key2', 'value2');
@@ -59,7 +59,7 @@ class FilesystemTest extends TestCase
         $this->assertEquals(['key1' => 'value1', 'key2' => 'value2', 'key3' => 'default'], $result);
     }
 
-    public function testSetMultiple()
+    public function testSetMultiple(): void
     {
         $values = ['key1' => 'value1', 'key2' => 'value2'];
         $this->assertTrue($this->filesystem->setMultiple($values));
@@ -67,7 +67,7 @@ class FilesystemTest extends TestCase
         $this->assertEquals('value2', $this->filesystem->get('key2'));
     }
 
-    public function testDeleteMultiple()
+    public function testDeleteMultiple(): void
     {
         $this->filesystem->set('key1', 'value1');
         $this->filesystem->set('key2', 'value2');
@@ -76,7 +76,7 @@ class FilesystemTest extends TestCase
         $this->assertNull($this->filesystem->get('key2'));
     }
 
-    public function testHas()
+    public function testHas(): void
     {
         $key = 'existing_key';
         $this->filesystem->set($key, 'value');
