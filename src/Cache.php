@@ -87,7 +87,7 @@ class Cache
 
         $ttl = $ttl ?? $this->config?->getDuration();
 
-        return $this->adapter->set($this->formatKey($key), $value, $this->ttpParser->toDateInterval($ttl));
+        return $this->adapter->set($this->formatKey($key), $value, $this->ttpParser->toSeconds($ttl));
     }
 
     /** @throws InvalidArgumentException */
