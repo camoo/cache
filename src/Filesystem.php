@@ -18,6 +18,7 @@ class Filesystem extends Base implements CacheInterface
 {
     private ?FilesystemAdapter $cache = null;
 
+    /** @param array<string, string|int> $options */
     public function __construct(array $options = [])
     {
         $this->cache ??= $this->loadFactory()->getFileSystemAdapter($options);
@@ -78,6 +79,9 @@ class Filesystem extends Base implements CacheInterface
         }
     }
 
+    /**
+     * @param iterable<string,mixed> $values
+     */
     public function setMultiple(iterable $values, null|int|DateInterval $ttl = null): bool
     {
         try {

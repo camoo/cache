@@ -88,12 +88,6 @@ abstract class Base
             }
         }
 
-        $ttl = is_int($ttl) ? new DateInterval(sprintf('PT%dS', $ttl)) : $ttl;
-
-        if ($ttl instanceof DateInterval) {
-            return $ttl;
-        }
-
-        throw new SimpleCacheInvalidArgumentException(self::INVALID_TTL_MESSAGE . ': Unsupported type');
+        return is_int($ttl) ? new DateInterval(sprintf('PT%dS', $ttl)) : $ttl;
     }
 }

@@ -38,6 +38,11 @@ class Cache
         }
     }
 
+    /**
+     * @param string[] $arguments
+     *
+     * @throws InvalidArgumentException
+     */
     public static function __callStatic(string $method, array $arguments): mixed
     {
         if (method_exists(self::class, $method)) {
@@ -191,6 +196,9 @@ class Cache
         }
     }
 
+    /**
+     * @return array<string,mixed>
+     */
     private static function getConfig(string $config): array
     {
         if (!class_exists(\CAMOO\Utils\Configure::class)) {
@@ -227,6 +235,9 @@ class Cache
         return $this->config->getPrefix() . $key;
     }
 
+    /**
+     * @param string[] $arguments
+     */
     private static function parseArguments(stdClass $data, array $arguments, string $method): stdClass
     {
         if ($method === 'writes') {
@@ -250,6 +261,11 @@ class Cache
         return $data;
     }
 
+    /**
+     * @param string[] $rawArguments
+     *
+     * @throws InvalidArgumentException
+     */
     private static function applyMagicCall(array $rawArguments, string $method): mixed
     {
         $data = new stdClass();

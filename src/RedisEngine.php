@@ -17,14 +17,13 @@ class RedisEngine extends Base implements CacheInterface
 {
     private ?RedisAdapter $cache = null;
 
+    /** @param array<string,string|int> $options */
     public function __construct(array $options = [])
     {
         $this->cache ??= $this->loadFactory()->getRedisAdapter($options);
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
+    /** @throws InvalidArgumentException */
     public function get(string $key, mixed $default = null): mixed
     {
         $this->validateKey($key);
@@ -34,8 +33,6 @@ class RedisEngine extends Base implements CacheInterface
     }
 
     /**
-     * @param mixed|null $ttl
-     *
      * @throws InvalidArgumentException
      * @throws Exception
      */
@@ -73,6 +70,9 @@ class RedisEngine extends Base implements CacheInterface
         }
     }
 
+    /**
+     * @param iterable<string,mixed> $values
+     */
     public function setMultiple(iterable $values, null|int|DateInterval $ttl = null): bool
     {
         try {

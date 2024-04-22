@@ -34,6 +34,7 @@ class CacheConfig
         return $this->namespace;
     }
 
+    /** @return array<string, mixed> */
     public function getOptions(): array
     {
         $options = ['ttl' => $this->getDuration()];
@@ -73,6 +74,9 @@ class CacheConfig
         return $this->dirname;
     }
 
+    /**
+     * @param array<string,mixed> $config
+     */
     public static function fromArray(array $config): CacheConfig
     {
         return new self(
