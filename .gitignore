@@ -9,3 +9,4 @@ sample
 phpunit.xml
 .phpunit.result.cache
 .phpunit.cache
+phpstan.neon

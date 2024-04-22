@@ -79,7 +79,7 @@ class Cache
 
         $value = $this->prepareValueForStorage($value);
 
-        $ttl = $ttl ?? $this->config->getDuration();
+        $ttl = $ttl ?? $this->config?->getDuration();
 
         return $this->adapter->set($this->formatKey($key), $value, $ttl);
     }
@@ -129,7 +129,8 @@ class Cache
         }
 
         $class = $this->config->getClassName();
-        if (!class_exists($class)) {
+        if (!class_exists($class) || !in_array(CacheInterface::class, class_implements($class))) {
+
             throw new AppException('Cache adapter class ' . $class . ' not found.');
         }
         $this->adapter = new $class($this->config->getOptions());
@@ -137,11 +138,11 @@ class Cache
 
     private function prepareValueForStorage(mixed $value): string
     {
-        if ($this->config->withSerialization()) {
+        if ($this->config?->withSerialization()) {
             $value = serialize($value);
         }
 
-        if ($this->config->withEncryption()) {
+        if ($this->config?->withEncryption()) {
             try {
                 $value = $this->encrypt($value);
             } catch (Throwable $exception) {
@@ -158,7 +159,7 @@ class Cache
             return false;
         }
 
-        if (!empty($value) && $this->config->withEncryption()) {
+        if (!empty($value) && $this->config?->withEncryption()) {
             try {
                 $value = $this->decrypt($value);
             } catch (Throwable $exception) {
@@ -166,7 +167,7 @@ class Cache
             }
         }
 
-        if (!empty($value) && $this->config->withSerialization()) {
+        if (!empty($value) && $this->config?->withSerialization()) {
             return unserialize($value);
         }
 
@@ -177,7 +178,7 @@ class Cache
     {
         try {
 
-            $key = Key::loadFromAsciiSafeString($this->config->getCryptoSalt());
+            $key = Key::loadFromAsciiSafeString($this->config?->getCryptoSalt() ?? '');
 
             return Crypto::encrypt($plaintext, $key);
         } catch (Throwable $exception) {
@@ -188,7 +189,7 @@ class Cache
     private function decrypt(string $ciphertext): string
     {
         try {
-            $key = Key::loadFromAsciiSafeString($this->config->getCryptoSalt());
+            $key = Key::loadFromAsciiSafeString($this->config?->getCryptoSalt() ?? '');
 
             return Crypto::decrypt($ciphertext, $key);
         } catch (Throwable $exception) {
@@ -196,9 +197,7 @@ class Cache
         }
     }
 
-    /**
-     * @return array<string,mixed>
-     */
+    /** @return array<string,mixed> */
     private static function getConfig(string $config): array
     {
         if (!class_exists(\CAMOO\Utils\Configure::class)) {
@@ -228,16 +227,14 @@ class Cache
 
     private function formatKey(string $key): string
     {
-        if (empty($this->config->getPrefix())) {
+        if (empty($this->config?->getPrefix())) {
             return $key;
         }
 
         return $this->config->getPrefix() . $key;
     }
 
-    /**
-     * @param string[] $arguments
-     */
+    /** @param string[] $arguments */
     private static function parseArguments(stdClass $data, array $arguments, string $method): stdClass
     {
         if ($method === 'writes') {
@@ -272,6 +269,10 @@ class Cache
         $parsedData = self::parseArguments($data, $rawArguments, $method);
         $cacheConfig = CacheConfig::fromArray(self::getConfig($parsedData->config));
         $cache = new self($cacheConfig);
+        $adaptedMethod = rtrim($method, 's');
+        if (!method_exists($cache, $adaptedMethod)) {
+            throw new AppException('Method ' . $adaptedMethod . ' not found in Cache class.');
+        }
         $arguments = $method !== 'clears' ? [$parsedData->key] : [];
         if ($method === 'writes') {
             $arguments[] = $parsedData->value;
@@ -282,6 +283,6 @@ class Cache
             return $cache->write($parsedData->key, $parsedData->value);
         }
 
-        return call_user_func_array([$cache, rtrim($method, 's')], $arguments);
+        return call_user_func_array([$cache, $adaptedMethod], $arguments);
     }
 }
