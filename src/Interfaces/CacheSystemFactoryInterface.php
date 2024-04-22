@@ -6,6 +6,7 @@ namespace Camoo\Cache\Interfaces;
 
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
+use Throwable;
 
 /**
  * Interface FileSystemFactoryInterface
@@ -20,11 +21,15 @@ interface CacheSystemFactoryInterface
 
     /**
      * @param array<string,string|int> $options
+     *
+     * @throws Throwable
      */
     public function getFileSystemAdapter(array $options = []): FilesystemAdapter;
 
     /**
      * @param array<string,string|int> $options
+     *
+     * @throws Throwable
      */
     public function getRedisAdapter(array $options = []): RedisAdapter;
 }

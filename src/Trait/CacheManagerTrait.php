@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Camoo\Cache\Trait;
 
+use Camoo\Cache\Helper\TtlParser;
 use Camoo\Cache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
 use DateInterval;
 use Exception;
@@ -39,7 +40,8 @@ trait CacheManagerTrait
         }
         $item->set($value);
         if ($ttl !== null) {
-            $item->expiresAfter($this->parseTtl($ttl));
+            $parser = new TtlParser();
+            $item->expiresAfter($parser->toDateInterval($ttl));
         }
 
         return (bool)$this->cache?->save($item);
