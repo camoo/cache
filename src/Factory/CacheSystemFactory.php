@@ -5,10 +5,8 @@ declare(strict_types=1);
 namespace Camoo\Cache\Factory;
 
 use Camoo\Cache\Exception\AppCacheException as Exception;
+use Camoo\Cache\Helper\TtlParser;
 use Camoo\Cache\Interfaces\CacheSystemFactoryInterface;
-use Camoo\Cache\InvalidArgumentException;
-use DateInterval;
-use DateTime;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Throwable;
@@ -20,7 +18,14 @@ use Throwable;
  */
 final class CacheSystemFactory implements CacheSystemFactoryInterface
 {
+    private TtlParser $ttlParser;
+
     private static ?CacheSystemFactoryInterface $factory = null;
+
+    public function __construct()
+    {
+        $this->ttlParser = new TtlParser();
+    }
 
     /** creates instances of Factory */
     public static function create(): CacheSystemFactoryInterface
@@ -66,7 +71,7 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
             $redisAdapter = new RedisAdapter(
                 RedisAdapter::createConnection($connection),
                 $options['namespace'] ?? CacheSystemFactoryInterface::CACHE_DIRNAME,
-                $options['ttl'] ?? CacheSystemFactoryInterface::CACHE_TTL
+                $this->ttlParser->toSeconds($options['ttl'] ?? CacheSystemFactoryInterface::CACHE_TTL)
             );
         } catch (Throwable $exception) {
             throw new Exception('Failed to create Redis Adapter: ' . $exception->getMessage(), 0, $exception);
@@ -75,7 +80,9 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
         return $redisAdapter;
     }
 
-    /** @inheritDoc */
+    /** @inheritDoc
+     * @throws \Exception
+     */
     public function getFileSystemAdapter(array $options = []): FilesystemAdapter
     {
         $default = [
@@ -91,23 +98,9 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
 
         $ttl = $options['ttl'] ?? CacheSystemFactoryInterface::CACHE_TTL;
 
-        if (is_string($ttl) && preg_match('/^\+/', $ttl)) {
-            try {
-                $oNow = new DateTime('now');
-                $sec = $oNow->modify($ttl)->getTimestamp() - time();
-                if ($sec < 0) {
-                    throw new InvalidArgumentException('ttl is not a legal value');
-                }
-                $ttl = new DateInterval(sprintf('PT%dS', $sec));
-                $ttl = $ttl->s;
-            } catch (Throwable) {
-                throw new InvalidArgumentException('ttl is not a legal value');
-            }
-        }
-
         return new FilesystemAdapter(
             $options['namespace'],
-            $ttl,
+            $this->ttlParser->toSeconds($ttl),
             rtrim($options['tmpPath'], DIRECTORY_SEPARATOR) .
             DIRECTORY_SEPARATOR .
             trim($options['dirname'], DIRECTORY_SEPARATOR)
