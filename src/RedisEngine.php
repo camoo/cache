@@ -6,6 +6,7 @@ namespace Camoo\Cache;
 
 use Camoo\Cache\Interfaces\CacheInterface;
 use Camoo\Cache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
+use DateInterval;
 use Exception;
 use Psr\Cache\InvalidArgumentException;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
@@ -22,11 +23,9 @@ class RedisEngine extends Base implements CacheInterface
     }
 
     /**
-     * @param mixed|null $default
-     *
      * @throws InvalidArgumentException
      */
-    public function get($key, $default = null): mixed
+    public function get(string $key, mixed $default = null): mixed
     {
         $this->validateKey($key);
         $item = $this->cache->getItem($key);
@@ -40,7 +39,7 @@ class RedisEngine extends Base implements CacheInterface
      * @throws InvalidArgumentException
      * @throws Exception
      */
-    public function set($key, $value, $ttl = null): ?bool
+    public function set(string $key, mixed $value, null|int|DateInterval $ttl = null): bool
     {
         $this->validateKey($key);
         $item = $this->cache->getItem($key);
@@ -52,10 +51,8 @@ class RedisEngine extends Base implements CacheInterface
         return $this->cache->save($item);
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
-    public function delete($key): bool
+    /** @throws InvalidArgumentException */
+    public function delete(string $key): bool
     {
         $this->validateKey($key);
 
@@ -67,7 +64,7 @@ class RedisEngine extends Base implements CacheInterface
         return $this->cache->clear();
     }
 
-    public function getMultiple($keys, $default = null): iterable
+    public function getMultiple(iterable $keys, mixed $default = null): iterable
     {
         try {
             return (new Psr16Cache($this->cache))->getMultiple($keys, $default);
@@ -76,7 +73,7 @@ class RedisEngine extends Base implements CacheInterface
         }
     }
 
-    public function setMultiple($values, $ttl = null): bool
+    public function setMultiple(iterable $values, null|int|DateInterval $ttl = null): bool
     {
         try {
             return (new Psr16Cache($this->cache))->setMultiple($values, $ttl);
@@ -85,7 +82,7 @@ class RedisEngine extends Base implements CacheInterface
         }
     }
 
-    public function deleteMultiple($keys): bool
+    public function deleteMultiple(iterable $keys): bool
     {
         try {
             return (new Psr16Cache($this->cache))->deleteMultiple($keys);
@@ -94,10 +91,8 @@ class RedisEngine extends Base implements CacheInterface
         }
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
-    public function has($key): bool
+    /** @throws InvalidArgumentException */
+    public function has(string $key): bool
     {
         $this->validateKey($key);
 

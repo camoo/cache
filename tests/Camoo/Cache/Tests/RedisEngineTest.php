@@ -27,7 +27,7 @@ class RedisEngineTest extends TestCase
         $this->cacheEngine->clear();
     }
 
-    public function testSetAndGet()
+    public function testSetAndGet(): void
     {
         $key = 'testKey';
         $value = 'testValue';
@@ -38,7 +38,7 @@ class RedisEngineTest extends TestCase
         $this->assertEquals($value, $cachedValue);
     }
 
-    public function testDelete()
+    public function testDelete(): void
     {
         $key = 'testKey';
         $this->cacheEngine->set($key, 'value');
@@ -49,7 +49,7 @@ class RedisEngineTest extends TestCase
         $this->assertFalse($result);
     }
 
-    public function testClear()
+    public function testClear(): void
     {
         $this->cacheEngine->set('key1', 'value1');
         $this->cacheEngine->set('key2', 'value2');
@@ -61,7 +61,7 @@ class RedisEngineTest extends TestCase
         $this->assertFalse($this->cacheEngine->has('key2'));
     }
 
-    public function testGetMultiple()
+    public function testGetMultiple(): void
     {
         $keys = ['key1', 'key2', 'key3'];
         $values = ['value1', 'value2', 'value3'];
@@ -74,7 +74,7 @@ class RedisEngineTest extends TestCase
         $this->assertEquals(array_combine($keys, $values), ($results));
     }
 
-    public function testSetMultiple()
+    public function testSetMultiple(): void
     {
         $items = ['key1' => 'value1', 'key2' => 'value2'];
         $result = $this->cacheEngine->setMultiple($items);
@@ -85,7 +85,7 @@ class RedisEngineTest extends TestCase
         }
     }
 
-    public function testDeleteMultiple()
+    public function testDeleteMultiple(): void
     {
         $keys = ['key1', 'key2'];
         foreach ($keys as $key) {
@@ -100,7 +100,7 @@ class RedisEngineTest extends TestCase
         }
     }
 
-    public function testHas()
+    public function testHas(): void
     {
         $key = 'exists';
         $this->cacheEngine->set($key, 'yes');
