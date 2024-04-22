@@ -32,6 +32,7 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
         return self::$factory;
     }
 
+    /** @inheritDoc */
     public function getRedisAdapter(array $options = []): RedisAdapter
     {
         // Merge the default options with the provided options.
@@ -74,6 +75,7 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
         return $redisAdapter;
     }
 
+    /** @inheritDoc */
     public function getFileSystemAdapter(array $options = []): FilesystemAdapter
     {
         $default = [
