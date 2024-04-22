@@ -6,9 +6,11 @@ namespace Camoo\Cache;
 
 use Camoo\Cache\Exception\AppCacheException;
 use Camoo\Cache\Exception\AppCacheException as AppException;
+use Camoo\Cache\Helper\TtlParser;
 use Camoo\Cache\Interfaces\CacheInterface;
 use Defuse\Crypto\Crypto;
 use Defuse\Crypto\Key;
+use Exception;
 use Psr\SimpleCache\InvalidArgumentException;
 use stdClass;
 use Throwable;
@@ -30,12 +32,15 @@ class Cache
 
     private ?CacheConfig $config;
 
+    private TtlParser $ttpParser;
+
     public function __construct(?CacheConfig $config = null)
     {
         $this->config = $config;
         if ($this->config !== null) {
             $this->initializeAdapter();
         }
+        $this->ttpParser = new TtlParser();
     }
 
     /**
@@ -72,6 +77,7 @@ class Cache
      * @param int|string|null        $ttl
      *
      * @throws InvalidArgumentException
+     * @throws Exception
      */
     public function write(string $key, mixed $value, mixed $ttl = null): ?bool
     {
@@ -81,7 +87,7 @@ class Cache
 
         $ttl = $ttl ?? $this->config?->getDuration();
 
-        return $this->adapter->set($this->formatKey($key), $value, $ttl);
+        return $this->adapter->set($this->formatKey($key), $value, $this->ttpParser->toSeconds($ttl));
     }
 
     /** @throws InvalidArgumentException */
