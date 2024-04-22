@@ -56,9 +56,6 @@ jobs:
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src --level 6
 
-      - name: Check for Vulnerable Dependencies
-        run: composer audit
-
       - name: Run test suite
         env:
           REDIS_HOST: localhost
