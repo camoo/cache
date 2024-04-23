@@ -67,7 +67,7 @@ class Cache
         $newInstance = clone $this;
 
         $newInstance->config = $config;
-        $this->initializeAdapter();
+        $this->initializeAdapter($newInstance);
 
         return $newInstance;
     }
@@ -128,18 +128,20 @@ class Cache
         }
     }
 
-    private function initializeAdapter(): void
+    private function initializeAdapter(?self $cache = null): void
     {
-        if ($this->config === null) {
+        $self = $cache ?? $this;
+
+        if ($self->config === null) {
             throw new AppException('Configuration must be set before initializing the adapter.');
         }
 
-        $class = $this->config->getClassName();
+        $class = $self->config->getClassName();
         if (!class_exists($class) || !in_array(CacheInterface::class, class_implements($class))) {
 
             throw new AppException('Cache adapter class ' . $class . ' not found.');
         }
-        $this->adapter = new $class($this->config->getOptions());
+        $self->adapter = new $class($self->config->getOptions());
     }
 
     private function prepareValueForStorage(mixed $value): string
