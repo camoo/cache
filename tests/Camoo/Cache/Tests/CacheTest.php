@@ -7,7 +7,7 @@ namespace Camoo\Cache\Tests;
 use Camoo\Cache\Cache;
 use Camoo\Cache\CacheConfig;
 use Camoo\Cache\Exception\AppCacheException;
-use Camoo\Cache\RedisEngine;
+use Camoo\Cache\Filesystem;
 use PHPUnit\Framework\TestCase;
 
 class CacheTest extends TestCase
@@ -75,11 +75,50 @@ class CacheTest extends TestCase
         $cache->read('nonexistentKey');
     }
 
+    public function testClearThrowsDomainExceptionIfNotConfigured(): void
+    {
+        $this->expectException(AppCacheException::class);
+        (new Cache())->clear();
+    }
+
+    public function testSerializedObjectsAreHydratedByDefaultForCompatibility(): void
+    {
+        $config = CacheConfig::fromArray([
+            'serialize' => true,
+            'encrypt' => false,
+            'dirname' => 'security-test',
+            'tmpPath' => sys_get_temp_dir(),
+        ]);
+        $cache = new Cache($config);
+        $cache->write('object', new \stdClass());
+
+        $value = $cache->read('object');
+
+        $this->assertInstanceOf(\stdClass::class, $value);
+        $cache->clear();
+    }
+
+    public function testSerializedObjectsCanBeDisabled(): void
+    {
+        $config = CacheConfig::fromArray([
+            'serialize' => true,
+            'encrypt' => false,
+            'allow_serialized_classes' => false,
+            'dirname' => 'security-test-disabled',
+            'tmpPath' => sys_get_temp_dir(),
+        ]);
+        $cache = new Cache($config);
+        $cache->write('object', new \stdClass());
+
+        $this->assertNotInstanceOf(\stdClass::class, $cache->read('object'));
+        $cache->clear();
+    }
+
     public function testCanApplyWithConfig(): void
     {
         $originalCache = $this->cache;
-        $redisConfig = new CacheConfig(RedisEngine::class);
-        $newCache = $this->cache->withConfig($redisConfig);
+        $filesystemConfig = new CacheConfig(Filesystem::class, null, true, false, null, 'with-config-test', sys_get_temp_dir());
+        $newCache = $this->cache->withConfig($filesystemConfig);
         $this->assertNotSame($originalCache, $newCache);
     }
 }

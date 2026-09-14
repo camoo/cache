@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Camoo\Cache;
 
-use Camoo\Cache\Exception\AppCacheException;
 use Camoo\Cache\Exception\AppCacheException as AppException;
 use Camoo\Cache\Helper\TtlParser;
 use Camoo\Cache\Interfaces\CacheInterface;
@@ -67,7 +66,7 @@ class Cache
         $newInstance = clone $this;
 
         $newInstance->config = $config;
-        $this->initializeAdapter($newInstance);
+        $newInstance->initializeAdapter();
 
         return $newInstance;
     }
@@ -118,13 +117,15 @@ class Cache
 
     public function clear(): bool
     {
+        $this->ensureConfigured();
+
         return $this->adapter->clear();
     }
 
     private function ensureConfigured(): void
     {
         if ($this->config === null) {
-            throw new AppCacheException('Cache is not configured properly.');
+            throw new AppException('Cache is not configured properly.');
         }
     }
 
@@ -144,13 +145,17 @@ class Cache
         $self->adapter = new $class($self->config->getOptions());
     }
 
-    private function prepareValueForStorage(mixed $value): string
+    private function prepareValueForStorage(mixed $value): mixed
     {
         if ($this->config?->withSerialization()) {
             $value = serialize($value);
         }
 
         if ($this->config?->withEncryption()) {
+            if (!is_string($value)) {
+                throw new AppException('Encryption requires a string value when serialization is disabled.');
+            }
+
             try {
                 $value = $this->encrypt($value);
             } catch (Throwable $exception) {
@@ -175,8 +180,18 @@ class Cache
             }
         }
 
-        if (!empty($value) && $this->config?->withSerialization()) {
-            return unserialize($value);
+        if ($this->config?->withSerialization()) {
+            $unserialized = @unserialize($value, [
+                'allowed_classes' => $this->config->allowsSerializedClasses(),
+            ]);
+
+            // `false` is a valid serialized value, but any other failed
+            // payload should not silently become a cache miss.
+            if ($unserialized === false && $value !== 'b:0;') {
+                throw new AppException('Unable to safely unserialize cached value.');
+            }
+
+            return $unserialized;
         }
 
         return $value;

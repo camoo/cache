@@ -84,6 +84,22 @@ $data = $cacheRedis->read('foo');
 
 ```
 
+# Running Tests
+
+Run the complete test suite, including Redis integration tests, with Docker:
+
+```bash
+docker compose up --build --abort-on-container-exit --exit-code-from tests
+```
+
+The Compose test image enables the PHP Redis extension and connects to the
+isolated Redis service on database 15. The Redis service is not exposed on the
+host, so the test instance is safe to discard after the run.
+
+Serialized PHP classes are supported by default for backwards compatibility.
+Set `allow_serialized_classes` to `false` when cache contents may be modified
+by an untrusted party.
+
 # Advanced Configuration
 
 Camoo Cache can be tailored with various settings, including namespace management, prefixing keys, and adjusting the

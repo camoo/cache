@@ -6,7 +6,7 @@ namespace Camoo\Cache\Helper;
 
 use Camoo\Cache\Exception\AppCacheException;
 use DateInterval;
-use DateTime;
+use DateTimeImmutable;
 use Exception;
 use Throwable;
 
@@ -35,6 +35,10 @@ final class TtlParser
         }
 
         if ($ttl instanceof DateInterval) {
+            if ($ttl->invert === 1) {
+                throw new AppCacheException(self::INVALID_TTL_MESSAGE . ': must not be negative');
+            }
+
             return $ttl;
         }
 
@@ -44,13 +48,13 @@ final class TtlParser
             }
 
             try {
-                $now = new DateTime('now');
+                $now = new DateTimeImmutable('now');
                 $modifiedTime = $now->modify($ttl);
                 if ($modifiedTime === false) {
                     throw new AppCacheException('Failed to modify DateTime with string: ' . $ttl);
                 }
 
-                $seconds = $modifiedTime->getTimestamp() - time();
+                $seconds = $modifiedTime->getTimestamp() - $now->getTimestamp();
                 if ($seconds < 0) {
                     throw new AppCacheException('Calculated negative TTL from DateTime modification.');
                 }
@@ -61,7 +65,19 @@ final class TtlParser
             }
         }
 
-        return is_int($ttl) ? new DateInterval(sprintf('PT%dS', $ttl)) : $ttl;
+        if (is_int($ttl)) {
+            if ($ttl < 0) {
+                throw new AppCacheException(self::INVALID_TTL_MESSAGE . ': must not be negative');
+            }
+
+            return new DateInterval(sprintf('PT%dS', $ttl));
+        }
+
+        if ($ttl->invert === 1) {
+            throw new AppCacheException(self::INVALID_TTL_MESSAGE . ': must not be negative');
+        }
+
+        return $ttl;
     }
 
     /** @throws Exception */
@@ -75,6 +91,19 @@ final class TtlParser
             return $ttl;
         }
 
-        return $this->toDateInterval($ttl)->s;
+        $interval = $this->toDateInterval($ttl);
+        if ($interval === null) {
+            return null;
+        }
+        if ($interval->invert === 1) {
+            throw new AppCacheException(self::INVALID_TTL_MESSAGE . ': must not be negative');
+        }
+
+        try {
+            $start = new DateTimeImmutable('now');
+            return $start->add($interval)->getTimestamp() - $start->getTimestamp();
+        } catch (Throwable $exception) {
+            throw new AppCacheException(self::INVALID_TTL_MESSAGE . ': ' . $exception->getMessage(), 0, $exception);
+        }
     }
 }

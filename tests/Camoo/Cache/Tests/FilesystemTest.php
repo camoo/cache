@@ -84,4 +84,23 @@ class FilesystemTest extends TestCase
         $this->filesystem->delete($key);
         $this->assertFalse($this->filesystem->has($key));
     }
+
+    /** @dataProvider invalidKeyProvider */
+    public function testRejectsInvalidPsr16Keys(string $key): void
+    {
+        $this->expectException(\Camoo\Cache\InvalidArgumentException::class);
+        $this->filesystem->get($key);
+    }
+
+    /** @return array<string, array{string}> */
+    public static function invalidKeyProvider(): array
+    {
+        return [
+            'empty' => [''],
+            'whitespace' => ['   '],
+            'reserved slash' => ['a/b'],
+            'reserved colon' => ['a:b'],
+            'reserved brace' => ['a{b'],
+        ];
+    }
 }

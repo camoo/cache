@@ -50,15 +50,23 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
         ];
         $options = array_merge($default, $options);
 
-        // Set up the Redis connection configuration.
-        // Conditionally include the password in the connection string.
-        $passwordPart = $options['password'] ? urlencode($options['password']) . '@' : '';
+        $server = (string) $options['server'];
+        $port = (int) $options['port'];
+        $database = (int) $options['database'];
+        if ($port < 1 || $port > 65535 || $database < 0 || $server === '' || preg_match('/[\s\/@]/', $server) === 1) {
+            throw new Exception('Invalid Redis connection settings.');
+        }
+
+        // Encode credentials as URI components so they cannot alter the DSN.
+        $passwordPart = $options['password'] !== null && $options['password'] !== ''
+            ? rawurlencode((string) $options['password']) . '@'
+            : '';
         $connection = sprintf(
             'redis://%s%s:%d/%d',
             $passwordPart,
-            $options['server'],
-            $options['port'],
-            $options['database']
+            $server,
+            $port,
+            $database
         );
 
         // Check if the RedisAdapter class is available.
@@ -69,7 +77,7 @@ final class CacheSystemFactory implements CacheSystemFactoryInterface
         // Create and return a new RedisAdapter instance.
         try {
             $redisAdapter = new RedisAdapter(
-                RedisAdapter::createConnection($connection),
+                RedisAdapter::createConnection($connection, ['timeout' => (float) $options['timeout']]),
                 $options['namespace'] ?? CacheSystemFactoryInterface::CACHE_DIRNAME,
                 $this->ttlParser->toSeconds($options['ttl'] ?? CacheSystemFactoryInterface::CACHE_TTL)
             );
