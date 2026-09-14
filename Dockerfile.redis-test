@@ -1,0 +1,11 @@
+FROM php:8.2-cli
+
+# The Redis extension is required by Symfony's RedisAdapter. Pin the major
+# version so the test image remains reproducible while receiving compatible
+# patch releases from PECL.
+RUN pecl install redis-6.2.0 \
+    && docker-php-ext-enable redis \
+    && rm -rf /tmp/pear
+
+WORKDIR /app
+

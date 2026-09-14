@@ -36,7 +36,9 @@ abstract class Base
      */
     protected function validateKey(string $key): void
     {
-        if (trim($key) === '') {
+        // PSR-16 reserves these characters because adapters commonly use them
+        // as namespace/path separators. Reject them before the backend does.
+        if (trim($key) === '' || preg_match('/[{}()\/\\@:]/', $key) === 1) {
             throw new SimpleCacheInvalidArgumentException(self::INVALID_MESSAGE);
         }
     }

@@ -13,11 +13,15 @@ class RedisEngineTest extends TestCase
 
     protected function setUp(): void
     {
+        if (!class_exists('Redis') && !class_exists('Predis\\Client')) {
+            $this->markTestSkipped('Redis extension or predis is not installed.');
+        }
+
         $options = [
-            'server' => '127.0.0.1',
-            'port' => 6379,
+            'server' => getenv('REDIS_HOST') ?: '127.0.0.1',
+            'port' => (int) (getenv('REDIS_PORT') ?: 6379),
             //'password' => 'password', // Ensure this is aligned with your Redis setup or environment
-            'database' => 0,
+            'database' => (int) (getenv('REDIS_DATABASE') ?: 0),
         ];
         $this->cacheEngine = new RedisEngine($options);
     }

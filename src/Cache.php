@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 namespace Camoo\Cache;
 
-use Camoo\Cache\Exception\AppCacheException;
 use Camoo\Cache\Exception\AppCacheException as AppException;
 use Camoo\Cache\Helper\TtlParser;
 use Camoo\Cache\Interfaces\CacheInterface;
+use Camoo\Cache\Interfaces\StampedeProtectionInterface;
 use Defuse\Crypto\Crypto;
 use Defuse\Crypto\Key;
+use DateInterval;
 use Exception;
 use Psr\SimpleCache\InvalidArgumentException;
+use Psr\SimpleCache\CacheInterface as Psr16CacheInterface;
 use stdClass;
 use Throwable;
 
@@ -26,7 +28,7 @@ use Throwable;
  *
  * @author CamooSarl
  */
-class Cache
+class Cache implements Psr16CacheInterface
 {
     private CacheInterface $adapter;
 
@@ -67,7 +69,7 @@ class Cache
         $newInstance = clone $this;
 
         $newInstance->config = $config;
-        $this->initializeAdapter($newInstance);
+        $newInstance->initializeAdapter();
 
         return $newInstance;
     }
@@ -101,11 +103,27 @@ class Cache
     }
 
     /** @throws InvalidArgumentException */
+    public function get(string $key, mixed $default = null): mixed
+    {
+        if (!$this->check($key)) {
+            return $default;
+        }
+
+        return $this->read($key);
+    }
+
+    /** @throws InvalidArgumentException */
     public function delete(string $key): bool
     {
         $this->ensureConfigured();
 
         return $this->adapter->delete($this->formatKey($key));
+    }
+
+    /** @throws InvalidArgumentException|Exception */
+    public function set(string $key, mixed $value, null|int|DateInterval $ttl = null): bool
+    {
+        return (bool)$this->write($key, $value, $ttl);
     }
 
     /** @throws InvalidArgumentException */
@@ -116,15 +134,89 @@ class Cache
         return $this->adapter->has($this->formatKey($key));
     }
 
+    /** @throws InvalidArgumentException */
+    public function has(string $key): bool
+    {
+        return $this->check($key);
+    }
+
+    /** @return array<string,mixed> */
+    public function getMultiple(iterable $keys, mixed $default = null): iterable
+    {
+        $values = [];
+        foreach ($keys as $key) {
+            $key = (string)$key;
+            $values[$key] = $this->get($key, $default);
+        }
+
+        return $values;
+    }
+
+    /** @param iterable<string,mixed> $values */
+    public function setMultiple(iterable $values, null|int|DateInterval $ttl = null): bool
+    {
+        $success = true;
+        foreach ($values as $key => $value) {
+            $success = $this->set((string)$key, $value, $ttl) && $success;
+        }
+
+        return $success;
+    }
+
+    /** @param iterable<string> $keys */
+    public function deleteMultiple(iterable $keys): bool
+    {
+        $success = true;
+        foreach ($keys as $key) {
+            $success = $this->delete((string)$key) && $success;
+        }
+
+        return $success;
+    }
+
+    /**
+     * Returns a cached value or computes and stores it with stampede
+     * protection supplied by Symfony's cache lock registry.
+     *
+     * The callback is only expected to be called without arguments. A beta of
+     * 1.0 gives Symfony's adapter its standard probabilistic early expiration
+     * behavior; pass 0.0 to disable early recomputation.
+     *
+     * @param callable():mixed $callback
+     * @throws InvalidArgumentException|Exception
+     */
+    public function remember(string $key, callable $callback, mixed $ttl = null, ?float $beta = 1.0): mixed
+    {
+        $this->ensureConfigured();
+        if (!$this->adapter instanceof StampedeProtectionInterface) {
+            throw new AppException('The configured adapter does not support stampede protection.');
+        }
+
+        $stored = $this->adapter->remember(
+            $this->formatKey($key),
+            fn (): mixed => $this->prepareValueForStorage($callback()),
+            $ttl,
+            $beta
+        );
+
+        if ($this->config->withSerialization() || $this->config->withEncryption()) {
+            return $this->prepareValueFromStorage(is_string($stored) ? $stored : null);
+        }
+
+        return $stored;
+    }
+
     public function clear(): bool
     {
+        $this->ensureConfigured();
+
         return $this->adapter->clear();
     }
 
     private function ensureConfigured(): void
     {
         if ($this->config === null) {
-            throw new AppCacheException('Cache is not configured properly.');
+            throw new AppException('Cache is not configured properly.');
         }
     }
 
@@ -144,13 +236,17 @@ class Cache
         $self->adapter = new $class($self->config->getOptions());
     }
 
-    private function prepareValueForStorage(mixed $value): string
+    private function prepareValueForStorage(mixed $value): mixed
     {
         if ($this->config?->withSerialization()) {
             $value = serialize($value);
         }
 
         if ($this->config?->withEncryption()) {
+            if (!is_string($value)) {
+                throw new AppException('Encryption requires a string value when serialization is disabled.');
+            }
+
             try {
                 $value = $this->encrypt($value);
             } catch (Throwable $exception) {
@@ -175,8 +271,18 @@ class Cache
             }
         }
 
-        if (!empty($value) && $this->config?->withSerialization()) {
-            return unserialize($value);
+        if ($this->config?->withSerialization()) {
+            $unserialized = @unserialize($value, [
+                'allowed_classes' => $this->config->allowsSerializedClasses(),
+            ]);
+
+            // `false` is a valid serialized value, but any other failed
+            // payload should not silently become a cache miss.
+            if ($unserialized === false && $value !== 'b:0;') {
+                throw new AppException('Unable to safely unserialize cached value.');
+            }
+
+            return $unserialized;
         }
 
         return $value;

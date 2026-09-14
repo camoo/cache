@@ -73,6 +73,28 @@ class TtlParserTest extends TestCase
         $this->assertEquals(3600, $this->parser->toSeconds($interval));
     }
 
+    public function testToSecondsIncludesDaysAndHours(): void
+    {
+        $interval = new DateInterval('P1DT2H');
+
+        $this->assertSame(93600, $this->parser->toSeconds($interval));
+    }
+
+    public function testNegativeIntegerTtlThrowsException(): void
+    {
+        $this->expectException(AppCacheException::class);
+        $this->parser->toDateInterval(-1);
+    }
+
+    public function testNegativeDateIntervalThrowsException(): void
+    {
+        $interval = new DateInterval('PT1S');
+        $interval->invert = 1;
+
+        $this->expectException(AppCacheException::class);
+        $this->parser->toDateInterval($interval);
+    }
+
     public function testToSecondsWithStringReturnsCorrectSeconds(): void
     {
         $this->assertEquals(60, $this->parser->toSeconds('+1 minute'));

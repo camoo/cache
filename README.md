@@ -84,6 +84,40 @@ $data = $cacheRedis->read('foo');
 
 ```
 
+## Stampede-safe Remember
+
+Use `remember()` to compute a missing value once while Symfony's cache lock
+registry coordinates concurrent requests:
+
+```php
+$value = $cache->remember(
+    'expensive-result',
+    static fn (): array => loadExpensiveResult(),
+    60
+);
+```
+
+The callback runs on a miss and its result is cached for the supplied TTL.
+The optional fourth argument, `beta`, defaults to `1.0` for probabilistic early
+recomputation; use `0.0` to disable early recomputation.
+
+# Running Tests
+
+Run the complete test suite, including Redis integration tests, with Docker:
+
+```bash
+docker compose up --build --abort-on-container-exit --exit-code-from tests
+```
+
+The Compose test image enables the PHP Redis extension and connects to the
+isolated Redis service on database 15. The Redis service is not exposed on the
+host, so the test instance is safe to discard after the run.
+
+Serialized PHP classes are supported by `CacheConfig::fromArray()` by default
+for backwards compatibility. Direct `CacheConfig` construction disables them
+by default. Set `allow_serialized_classes` to `false` explicitly when cache
+contents may be modified by an untrusted party.
+
 # Advanced Configuration
 
 Camoo Cache can be tailored with various settings, including namespace management, prefixing keys, and adjusting the

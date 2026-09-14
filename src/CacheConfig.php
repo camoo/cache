@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Camoo\Cache;
 
-class CacheConfig
+readonly class CacheConfig
 {
     public function __construct(
         private string $className,
@@ -20,7 +20,8 @@ class CacheConfig
         private ?int $port = 6379,
         private ?int $timeout = 0,
         private ?int $database = 0,
-        private ?string $password = null
+        private ?string $password = null,
+        private bool $allowSerializedClasses = false
     ) {
     }
 
@@ -93,7 +94,8 @@ class CacheConfig
             $config['port'] ?? 6379,
             $config['timeout'] ?? 0,
             $config['database'] ?? 0,
-            $config['password'] ?? null
+            $config['password'] ?? null,
+            $config['allow_serialized_classes'] ?? true
         );
     }
 
@@ -151,5 +153,16 @@ class CacheConfig
     public function getPassword(): ?string
     {
         return $this->password;
+    }
+
+    /**
+     * Direct construction disables serialized PHP objects by default. The
+     * array factory enables them by default for backwards compatibility.
+     * Set allow_serialized_classes to false when cache data may be modified
+     * by an untrusted party.
+     */
+    public function allowsSerializedClasses(): bool
+    {
+        return $this->allowSerializedClasses;
     }
 }

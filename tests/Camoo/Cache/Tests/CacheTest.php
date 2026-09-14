@@ -7,7 +7,8 @@ namespace Camoo\Cache\Tests;
 use Camoo\Cache\Cache;
 use Camoo\Cache\CacheConfig;
 use Camoo\Cache\Exception\AppCacheException;
-use Camoo\Cache\RedisEngine;
+use Camoo\Cache\Filesystem;
+use Psr\SimpleCache\CacheInterface as Psr16CacheInterface;
 use PHPUnit\Framework\TestCase;
 
 class CacheTest extends TestCase
@@ -75,11 +76,81 @@ class CacheTest extends TestCase
         $cache->read('nonexistentKey');
     }
 
+    public function testClearThrowsDomainExceptionIfNotConfigured(): void
+    {
+        $this->expectException(AppCacheException::class);
+        (new Cache())->clear();
+    }
+
+    public function testSerializedObjectsAreHydratedByDefaultForCompatibility(): void
+    {
+        $config = CacheConfig::fromArray([
+            'serialize' => true,
+            'encrypt' => false,
+            'dirname' => 'security-test',
+            'tmpPath' => sys_get_temp_dir(),
+        ]);
+        $cache = new Cache($config);
+        $cache->write('object', new \stdClass());
+
+        $value = $cache->read('object');
+
+        $this->assertInstanceOf(\stdClass::class, $value);
+        $cache->clear();
+    }
+
+    public function testSerializedObjectsCanBeDisabled(): void
+    {
+        $config = CacheConfig::fromArray([
+            'serialize' => true,
+            'encrypt' => false,
+            'allow_serialized_classes' => false,
+            'dirname' => 'security-test-disabled',
+            'tmpPath' => sys_get_temp_dir(),
+        ]);
+        $cache = new Cache($config);
+        $cache->write('object', new \stdClass());
+
+        $this->assertNotInstanceOf(\stdClass::class, $cache->read('object'));
+        $cache->clear();
+    }
+
+    public function testDirectCacheConfigConstructionDisablesSerializedClassesByDefault(): void
+    {
+        $this->assertFalse((new CacheConfig(Filesystem::class))->allowsSerializedClasses());
+        $this->assertTrue(CacheConfig::fromArray([])->allowsSerializedClasses());
+    }
+
+    public function testImplementsPsr16WithoutChangingLegacyApi(): void
+    {
+        $this->assertInstanceOf(Psr16CacheInterface::class, $this->cache);
+        $this->assertTrue($this->cache->set('psr-key', false));
+        $this->assertFalse($this->cache->get('psr-key', true));
+        $this->assertSame('fallback', $this->cache->get('missing-psr-key', 'fallback'));
+        $this->assertTrue($this->cache->setMultiple(['psr-a' => 1, 'psr-b' => 2]));
+        $this->assertSame(['psr-a' => 1, 'psr-b' => 2], $this->cache->getMultiple(['psr-a', 'psr-b']));
+        $this->assertTrue($this->cache->deleteMultiple(['psr-a', 'psr-b']));
+    }
+
+    public function testRememberComputesOnceAndReturnsCachedValue(): void
+    {
+        $calls = 0;
+        $callback = static function () use (&$calls): array {
+            ++$calls;
+
+            return ['value' => 'cached'];
+        };
+
+        $this->assertSame(['value' => 'cached'], $this->cache->remember('remember-key', $callback, 60));
+        $this->assertSame(['value' => 'cached'], $this->cache->remember('remember-key', $callback, 60));
+        $this->assertSame(1, $calls);
+    }
+
     public function testCanApplyWithConfig(): void
     {
         $originalCache = $this->cache;
-        $redisConfig = new CacheConfig(RedisEngine::class);
-        $newCache = $this->cache->withConfig($redisConfig);
+        $filesystemConfig = new CacheConfig(Filesystem::class, null, true, false, null, 'with-config-test', sys_get_temp_dir());
+        $newCache = $this->cache->withConfig($filesystemConfig);
         $this->assertNotSame($originalCache, $newCache);
     }
 }

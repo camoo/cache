@@ -9,11 +9,20 @@ use Camoo\Cache\InvalidArgumentException as SimpleCacheInvalidArgumentException;
 use DateInterval;
 use Exception;
 use Psr\Cache\InvalidArgumentException;
+use Psr\Cache\CacheItemInterface;
 use Symfony\Component\Cache\Psr16Cache;
+use Symfony\Contracts\Cache\CacheInterface as SymfonyCacheInterface;
 use Throwable;
 
 trait CacheManagerTrait
 {
+    private ?Psr16Cache $psr16Cache = null;
+
+    private function psr16(): Psr16Cache
+    {
+        return $this->psr16Cache ??= new Psr16Cache($this->cache);
+    }
+
     /** @throws InvalidArgumentException */
     public function get(string $key, mixed $default = null): mixed
     {
@@ -74,7 +83,7 @@ trait CacheManagerTrait
             throw new SimpleCacheInvalidArgumentException('Cache not initialized');
         }
         try {
-            return (new Psr16Cache($this->cache))->getMultiple($keys, $default);
+            return $this->psr16()->getMultiple($keys, $default);
         } catch (Throwable $exception) {
             throw new SimpleCacheInvalidArgumentException($exception->getMessage());
         }
@@ -84,7 +93,7 @@ trait CacheManagerTrait
     public function setMultiple(iterable $values, null|int|DateInterval $ttl = null): bool
     {
         try {
-            return (new Psr16Cache($this->cache))->setMultiple($values, $ttl);
+            return $this->psr16()->setMultiple($values, $ttl);
         } catch (Throwable $exception) {
             throw new SimpleCacheInvalidArgumentException($exception->getMessage());
         }
@@ -93,9 +102,38 @@ trait CacheManagerTrait
     public function deleteMultiple(iterable $keys): bool
     {
         try {
-            return (new Psr16Cache($this->cache))->deleteMultiple($keys);
+            return $this->psr16()->deleteMultiple($keys);
         } catch (Throwable $exception) {
             throw new SimpleCacheInvalidArgumentException($exception->getMessage());
         }
+    }
+
+    /**
+     * Computes a missing value through Symfony's stampede-safe cache contract.
+     *
+     * @param callable():mixed $callback
+     * @throws InvalidArgumentException|Exception
+     */
+    public function remember(string $key, callable $callback, mixed $ttl = null, ?float $beta = 1.0): mixed
+    {
+        $this->validateKey($key);
+        if (!$this->cache instanceof SymfonyCacheInterface) {
+            throw new SimpleCacheInvalidArgumentException('Cache adapter does not support stampede protection.');
+        }
+
+        $cache = $this->cache;
+
+        return $cache->get(
+            $key,
+            static function (CacheItemInterface $item) use ($callback, $ttl): mixed {
+                $value = $callback();
+                if ($ttl !== null) {
+                    $item->expiresAfter((new TtlParser())->toDateInterval($ttl));
+                }
+
+                return $value;
+            },
+            $beta
+        );
     }
 }
