@@ -156,9 +156,10 @@ readonly class CacheConfig
     }
 
     /**
-     * Serialized PHP objects are allowed by default for backwards
-     * compatibility. Set allow_serialized_classes to false when cache data
-     * may be modified by an untrusted party.
+     * Direct construction disables serialized PHP objects by default. The
+     * array factory enables them by default for backwards compatibility.
+     * Set allow_serialized_classes to false when cache data may be modified
+     * by an untrusted party.
      */
     public function allowsSerializedClasses(): bool
     {

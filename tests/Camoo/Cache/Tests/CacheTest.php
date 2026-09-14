@@ -8,6 +8,7 @@ use Camoo\Cache\Cache;
 use Camoo\Cache\CacheConfig;
 use Camoo\Cache\Exception\AppCacheException;
 use Camoo\Cache\Filesystem;
+use Psr\SimpleCache\CacheInterface as Psr16CacheInterface;
 use PHPUnit\Framework\TestCase;
 
 class CacheTest extends TestCase
@@ -112,6 +113,37 @@ class CacheTest extends TestCase
 
         $this->assertNotInstanceOf(\stdClass::class, $cache->read('object'));
         $cache->clear();
+    }
+
+    public function testDirectCacheConfigConstructionDisablesSerializedClassesByDefault(): void
+    {
+        $this->assertFalse((new CacheConfig(Filesystem::class))->allowsSerializedClasses());
+        $this->assertTrue(CacheConfig::fromArray([])->allowsSerializedClasses());
+    }
+
+    public function testImplementsPsr16WithoutChangingLegacyApi(): void
+    {
+        $this->assertInstanceOf(Psr16CacheInterface::class, $this->cache);
+        $this->assertTrue($this->cache->set('psr-key', false));
+        $this->assertFalse($this->cache->get('psr-key', true));
+        $this->assertSame('fallback', $this->cache->get('missing-psr-key', 'fallback'));
+        $this->assertTrue($this->cache->setMultiple(['psr-a' => 1, 'psr-b' => 2]));
+        $this->assertSame(['psr-a' => 1, 'psr-b' => 2], $this->cache->getMultiple(['psr-a', 'psr-b']));
+        $this->assertTrue($this->cache->deleteMultiple(['psr-a', 'psr-b']));
+    }
+
+    public function testRememberComputesOnceAndReturnsCachedValue(): void
+    {
+        $calls = 0;
+        $callback = static function () use (&$calls): array {
+            ++$calls;
+
+            return ['value' => 'cached'];
+        };
+
+        $this->assertSame(['value' => 'cached'], $this->cache->remember('remember-key', $callback, 60));
+        $this->assertSame(['value' => 'cached'], $this->cache->remember('remember-key', $callback, 60));
+        $this->assertSame(1, $calls);
     }
 
     public function testCanApplyWithConfig(): void
